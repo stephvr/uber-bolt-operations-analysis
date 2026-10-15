@@ -1,16 +1,18 @@
 /* (a) If Uber’s commission rate were hypothetically reduced from 25% to 20%, 
 how would total driver payouts change across completed trips, assuming all other trip values remain unchanged? */
-/* After the query is run, it will show the total completed trips for the Uber platform, the previous total driver payout, 
+/* After the query is run, it will show the total completed trips for the Uber platform, the previous total driver payout,
 the new simulated total driver payouts, the payout percentage increase */
+/* Commission is only charged on the commissionable fare (total fare - tips - tolls),
+so the 5% reduction is applied to that amount in all three queries. */
 
 SELECT 
     pa.affiliation_name AS platform_affiliation,
     COUNT(th.trip_id) AS total_completed_trips,
     ROUND(SUM(tfb.total_fare_zar), 2) AS total_gross_fare_zar,
     ROUND(SUM(tfb.driver_payout_zar), 2) AS current_driver_payout_zar,
-    ROUND(SUM(tfb.driver_payout_zar + (tfb.total_fare_zar * 0.05)), 2) AS simulated_driver_payout_zar,
-    ROUND(SUM(tfb.total_fare_zar * 0.05), 2) AS total_driver_payout_increase_zar,
-    ROUND((SUM(tfb.total_fare_zar * 0.05) / NULLIF(SUM(tfb.driver_payout_zar), 0)) * 100, 2) AS payout_percentage_increase
+    ROUND(SUM(tfb.driver_payout_zar + (tfb.total_fare_zar - tfb.tip_zar - tfb.tolls_zar) * 0.05), 2) AS simulated_driver_payout_zar,
+    ROUND(SUM((tfb.total_fare_zar - tfb.tip_zar - tfb.tolls_zar) * 0.05), 2) AS total_driver_payout_increase_zar,
+    ROUND((SUM((tfb.total_fare_zar - tfb.tip_zar - tfb.tolls_zar) * 0.05) / NULLIF(SUM(tfb.driver_payout_zar), 0)) * 100, 2) AS payout_percentage_increase
 
 FROM TRIP_HEADERS th
 JOIN 
@@ -34,10 +36,11 @@ SELECT
     pa.affiliation_name AS platform_affiliation,
     COUNT(th.trip_id) AS total_completed_trips,
     ROUND(SUM(tfb.total_fare_zar), 2) AS total_gross_fare_zar,
+    ROUND(SUM(tfb.total_fare_zar - tfb.tip_zar - tfb.tolls_zar), 2) AS commissionable_fare_zar,
     ROUND(SUM(tfb.platform_commission_zar), 2) AS current_platform_commission_zar, -- Current Baseline Commission (25%)
-    ROUND(SUM(tfb.total_fare_zar * 0.20), 2) AS simulated_platform_commission_zar, -- Simulated Commission (20%)
-    ROUND(SUM(tfb.total_fare_zar * 0.05), 2) AS uber_revunue_loss_commission_zar, -- Revenue Loss for Uber
-    ROUND((SUM(tfb.total_fare_zar * 0.05) / NULLIF(SUM(tfb.platform_commission_zar), 0)) * 100, 2) AS commission_revenue_loss_pct
+    ROUND(SUM(tfb.platform_commission_zar - (tfb.total_fare_zar - tfb.tip_zar - tfb.tolls_zar) * 0.05), 2) AS simulated_platform_commission_zar, -- Simulated Commission (20%)
+    ROUND(SUM((tfb.total_fare_zar - tfb.tip_zar - tfb.tolls_zar) * 0.05), 2) AS uber_revunue_loss_commission_zar, -- Revenue Loss for Uber
+    ROUND((SUM((tfb.total_fare_zar - tfb.tip_zar - tfb.tolls_zar) * 0.05) / NULLIF(SUM(tfb.platform_commission_zar), 0)) * 100, 2) AS commission_revenue_loss_pct
 
 FROM TRIP_HEADERS th
 JOIN 
@@ -63,8 +66,8 @@ SELECT
     ROUND(SUM(tfb.total_fare_zar), 2) AS gross_fare_zar,
     ROUND(SUM(tfb.driver_payout_zar), 2) AS current_driver_payout_zar,
     ROUND(SUM(tfb.platform_commission_zar), 2) AS current_uber_commission_zar,
-    ROUND(SUM(tfb.total_fare_zar * 0.05), 2) AS foregone_commission_driver_gain_zar, -- 5% Shift Metrics
-    ROUND(AVG(tfb.total_fare_zar * 0.05), 2) AS avg_gain_per_trip_zar
+    ROUND(SUM((tfb.total_fare_zar - tfb.tip_zar - tfb.tolls_zar) * 0.05), 2) AS foregone_commission_driver_gain_zar, -- 5% Shift Metrics
+    ROUND(AVG((tfb.total_fare_zar - tfb.tip_zar - tfb.tolls_zar) * 0.05), 2) AS avg_gain_per_trip_zar
     
 FROM TRIP_HEADERS th
 JOIN 

@@ -1,6 +1,7 @@
 -- QUERY 1: Earning Opportunities by City, Day of Week, and Time Period (Shift)
 -- Purpose: Aggregates trip volume, surge frequency, average surge, and total 
 --          driver payout across cities, days of the week, and operational shifts.
+--          The peak periods match the surge windows found in RQ4.
 -- Techniques: 4-table inner join, TO_CHAR for date parts, CASE for shift 
 --             categorization and surge frequency, GROUP BY aggregation.
 -- ==============================================================================
@@ -11,8 +12,8 @@ SELECT
     CASE 
         WHEN TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 7 AND 9 THEN '07:00-09:59 (Morning Peak)'
         WHEN TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 10 AND 15 THEN '10:00-15:59 (Midday Off-Peak)'
-        WHEN TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 16 AND 18 THEN '16:00-18:59 (Afternoon Peak)'
-        WHEN TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 19 AND 21 THEN '19:00-21:59 (Evening)'
+        WHEN TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 16 AND 19 THEN '16:00-19:59 (Afternoon Peak)'
+        WHEN TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 20 AND 21 THEN '20:00-21:59 (Evening)'
         ELSE '22:00-06:59 (Late Night / Early Morning)'
     END AS operating_period,
     COUNT(*) AS completed_trips,
@@ -33,8 +34,8 @@ GROUP BY
     CASE 
         WHEN TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 7 AND 9 THEN '07:00-09:59 (Morning Peak)'
         WHEN TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 10 AND 15 THEN '10:00-15:59 (Midday Off-Peak)'
-        WHEN TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 16 AND 18 THEN '16:00-18:59 (Afternoon Peak)'
-        WHEN TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 19 AND 21 THEN '19:00-21:59 (Evening)'
+        WHEN TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 16 AND 19 THEN '16:00-19:59 (Afternoon Peak)'
+        WHEN TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 20 AND 21 THEN '20:00-21:59 (Evening)'
         ELSE '22:00-06:59 (Late Night / Early Morning)'
     END
 ORDER BY total_driver_payout_zar DESC;
@@ -88,6 +89,7 @@ FETCH FIRST 15 ROWS ONLY;
 -- QUERY 3: Weekday vs Weekend Peak/Off-Peak Comparative Analysis by City
 -- Purpose: Compares peak operating hours against off-peak operating hours across
 --          weekdays and weekends to measure surge dependency and earning premium.
+--          Peak hours (07:00-09:59 and 16:00-19:59) match the surge windows found in RQ4.
 -- Techniques: Multi-level CASE logic, CTEs, ratio calculations.
 -- ==============================================================================
 
@@ -100,7 +102,7 @@ WITH ShiftPerformance AS (
         END AS day_type,
         CASE 
             WHEN TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 7 AND 9 OR 
-                 TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 16 AND 18 THEN 'Peak Hours'
+                 TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 16 AND 19 THEN 'Peak Hours'
             ELSE 'Off-Peak Hours'
         END AS peak_status,
         COUNT(*) AS completed_trips,
@@ -121,7 +123,7 @@ WITH ShiftPerformance AS (
         END,
         CASE 
             WHEN TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 7 AND 9 OR 
-                 TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 16 AND 18 THEN 'Peak Hours'
+                 TO_NUMBER(TO_CHAR(h.request_timestamp, 'HH24')) BETWEEN 16 AND 19 THEN 'Peak Hours'
             ELSE 'Off-Peak Hours'
         END
 )
